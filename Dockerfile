@@ -24,4 +24,8 @@ EXPOSE 1389 1636
 USER openldap
 
 # Start the daemon pointing to our config and data
-CMD ["slapd", "-d", "stats", "-h", "ldap://0.0.0.0:1389/ ldaps://0.0.0.0:1636/ ldapi:///"]
+# Change this:
+# CMD ["slapd", "-d", "stats", "-h", "ldap://0.0.0.0:1389/ ldaps://0.0.0.0:1636/ ldapi:///"]
+
+# To this:
+CMD ["slapd", "-d", "stats", "-h", "ldap://0.0.0.0:1389/ ldaps://0.0.0.0:1636/"]
