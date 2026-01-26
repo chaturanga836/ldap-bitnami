@@ -2,34 +2,22 @@ version: '3.8'
 
 services:
   ldap:
-    image: bitnami/openldap:latest
-    container_name: ldap-production
+    build: .
+    container_name: ldap-custom-prod
     ports:
-      - "389:1389"   # Standard LDAP
-      - "636:1636"   # LDAP over SSL (LDAPS)
-    environment:
-      # --- Root Configuration ---
-      - LDAP_ROOT=dc=example,dc=org
-      - LDAP_ADMIN_USERNAME=admin
-      - LDAP_ADMIN_PASSWORD=your_secure_password
-      
-      # --- SSL / TLS Configuration ---
-      - LDAP_ENABLE_TLS=yes
-      - LDAP_TLS_CERT_FILE=/opt/bitnami/openldap/certs/tls.crt
-      - LDAP_TLS_KEY_FILE=/opt/bitnami/openldap/certs/tls.key
-      - LDAP_TLS_CA_FILE=/opt/bitnami/openldap/certs/ca.crt
-      
-      # --- Initialization ---
-      # This skips the default 'user01' creation so you can use your own LDIFs
-      - LDAP_SKIP_DEFAULT_TREE=yes
-      - BITNAMI_DEBUG=false
+      - "389:1389"   # Host 389 maps to internal 1389
+      - "636:1636"   # Host 636 maps to internal 1636
     volumes:
-      - ldap_data:/bitnami/openldap
-      # Place your .ldif files in a local folder called ./ldifs to bootstrap users
-      - ./ldifs:/ldifs:ro 
-      # Mount your existing SSL certificates
-      - ./certs:/opt/bitnami/openldap/certs:ro
+      # --- Persistent Data ---
+      - ldap_db:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+      
+      # --- SSL Certs (Your Request) ---
+      # We mount them read-only for security
+      - ./certs/ldap.crt:/etc/ldap/certs/tls.crt
+      - ./certs/ldap.key:/etc/ldap/certs/tls.key
+      - ./certs/ca.crt:/etc/ldap/certs/ca.crt
 
 volumes:
-  ldap_data:
-    driver: local
+  ldap_db:
+  ldap_config:
