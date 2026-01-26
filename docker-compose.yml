@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  ldap:
+    image: bitnami/openldap:latest
+    container_name: ldap-production
+    ports:
+      - "389:1389"   # Standard LDAP
+      - "636:1636"   # LDAP over SSL (LDAPS)
+    environment:
+      # --- Root Configuration ---
+      - LDAP_ROOT=dc=example,dc=org
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=your_secure_password
+      
+      # --- SSL / TLS Configuration ---
+      - LDAP_ENABLE_TLS=yes
+      - LDAP_TLS_CERT_FILE=/opt/bitnami/openldap/certs/ldap.crt
+      - LDAP_TLS_KEY_FILE=/opt/bitnami/openldap/certs/ldap.key
+      - LDAP_TLS_CA_FILE=/opt/bitnami/openldap/certs/ca.crt
+      
+      # --- Initialization ---
+      # This skips the default 'user01' creation so you can use your own LDIFs
+      - LDAP_SKIP_DEFAULT_TREE=yes
+      - BITNAMI_DEBUG=false
+    volumes:
+      - ldap_data:/bitnami/openldap
+      # Place your .ldif files in a local folder called ./ldifs to bootstrap users
+      - ./ldifs:/ldifs:ro 
+      # Mount your existing SSL certificates
+      - ./certs:/opt/bitnami/openldap/certs:ro
+
+volumes:
+  ldap_data:
+    driver: local
