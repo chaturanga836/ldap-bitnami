@@ -1,19 +1,25 @@
 #!/bin/bash
-set -e # Exit on any error
+set -e
 
-# 1. Variables with defaults
+# --- 1. Load Variables from .env ---
 export ADMIN_USER="${LDAP_ADMIN_USER:-admin}"
 export ADMIN_PW="${LDAP_ADMIN_PASSWORD:-admin}"
 export BASE_DN="${LDAP_BASE_DN:-dc=crypto,dc=lake}"
+export ORG_NAME="${LDAP_ORGANISATION:-CryptoLake}"
+
+# Hash the password for secure storage
 export HASHED_PW=$(slappasswd -s "$ADMIN_PW")
 
-# 2. Start slapd in background
-slapd -h "ldapi:/// ldap://0.0.0.0:1389/" -d 0 &
-sleep 3
+# --- 2. Check if already initialized ---
+if [ ! -f /var/lib/ldap/data.mdb ]; then
+    echo "Initializing LDAP as Root on Port 389..."
 
-# 3. CONFIGURE THE DATABASE (This fixes error 53)
-# This tells slapd that it owns dc=crypto,dc=lake
-cat <<EOF > /tmp/config.ldif
+    # Start slapd temporarily in background
+    slapd -h "ldapi:///" -d 0 &
+    sleep 3
+
+    # 3. Configure the Database Backend (Fixes Error 53 & 50)
+    cat <<EOF > /tmp/config.ldif
 dn: olcDatabase={1}mdb,cn=config
 changetype: modify
 replace: olcSuffix
@@ -26,20 +32,24 @@ replace: olcRootPW
 olcRootPW: ${HASHED_PW}
 EOF
 
-ldapmodify -Q -Y EXTERNAL -H ldapi:/// -f /tmp/config.ldif
+    ldapmodify -Q -Y EXTERNAL -H ldapi:/// -f /tmp/config.ldif
 
-# 4. ADD THE BASE STRUCTURE
-cat <<EOF > /tmp/base.ldif
+    # 4. Create the Base Domain Entry
+    cat <<EOF > /tmp/base.ldif
 dn: ${BASE_DN}
 objectClass: top
 objectClass: dcObject
 objectClass: organization
-o: CryptoLake
-dc: crypto
+o: ${ORG_NAME}
+dc: ${BASE_DN%%,*}
 EOF
 
-ldapadd -Q -Y EXTERNAL -H ldapi:/// -f /tmp/base.ldif
+    ldapadd -Q -Y EXTERNAL -H ldapi:/// -f /tmp/base.ldif
 
-# 5. KILL THE TEMP PROCESS
-pkill -f slapd
-sleep 2
+    # 5. Cleanup temporary process
+    pkill -f slapd
+    sleep 2
+    echo "LDAP successfully initialized."
+else
+    echo "Persistent data found. Skipping initialization."
+fi
