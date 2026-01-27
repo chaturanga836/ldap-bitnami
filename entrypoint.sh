@@ -12,10 +12,8 @@ TLS_KEY=${LDAP_TLS_KEY:-/etc/ldap/certs/tls.key}
 TLS_CA=${LDAP_TLS_CA_CRT:-/etc/ldap/certs/ca.crt}
 
 # --- 0. Production Pre-Flight Checks ---
-# Ensure cert directory exists (even if not mounted)
 mkdir -p $(dirname "$TLS_CRT")
 
-# Verify SSL files exist if initialization is needed
 if [ ! -f "/var/lib/ldap/.init_done" ]; then
     for file in "$TLS_CRT" "$TLS_KEY" "$TLS_CA"; do
         if [ ! -f "$file" ]; then
@@ -25,8 +23,6 @@ if [ ! -f "/var/lib/ldap/.init_done" ]; then
     done
 fi
 
-# Fix ownership for certs so the 'openldap' user can actually read them
-# (Docker mounts often default to root:root)
 chown openldap:openldap "$TLS_CRT" "$TLS_KEY" "$TLS_CA" || true
 chmod 600 "$TLS_KEY" || true
 
@@ -38,22 +34,13 @@ if [ ! -f "/var/lib/ldap/.init_done" ]; then
     rm -rf /etc/ldap/slapd.d/*
     rm -rf /var/lib/ldap/*
 
-if [ ! -f "/var/lib/ldap/.init_done" ]; then
-    echo "Initializing Production LDAP for $LDAP_DOMAIN..."
-    HASHED_PW=$(slappasswd -s "$LDAP_ADMIN_PW")
-
-    rm -rf /etc/ldap/slapd.d/*
-    rm -rf /var/lib/ldap/*
-
     slapadd -n 0 -F /etc/ldap/slapd.d <<EOF
 dn: cn=config
 objectClass: olcGlobal
 cn: config
-# --- DYNAMIC MODULE LOADING ---
 olcModulePath: /usr/lib/ldap
 olcModuleLoad: back_mdb
 olcModuleLoad: back_monitor
-# ------------------------------
 olcTLSCACertificateFile: ${TLS_CA}
 olcTLSCertificateFile: ${TLS_CRT}
 olcTLSCertificateKeyFile: ${TLS_KEY}
