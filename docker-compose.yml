@@ -14,8 +14,8 @@ services:
       - ldap_config:/etc/ldap/slapd.d
       
       # Match the names of your actual files on disk to the variables
-      - ./certs/ldap.crt:${LDAP_TLS_CERT}
-      - ./certs/ldap.key:${LDAP_TLS_KEY}
+      - ./certs/tls.crt:${LDAP_TLS_CERT}
+      - ./certs/tls.key:${LDAP_TLS_KEY}
       - ./certs/ca.crt:${LDAP_TLS_CA_CRT}
     healthcheck:
       test: ["CMD", "ldapsearch", "-H", "ldap://localhost", "-b", "cn=config", "-1"]
