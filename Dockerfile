@@ -21,6 +21,10 @@ RUN mkdir -p /etc/ldap/certs && chown openldap:openldap /etc/ldap/certs
 # Expose non-privileged ports (Standard for K8s readiness)
 EXPOSE 1389 1636
 
+COPY init-ldap.sh /usr/local/bin/init-ldap.sh
+RUN chmod +x /usr/local/bin/init-ldap.sh && \
+    chown openldap:openldap /usr/local/bin/init-ldap.sh
+
 USER openldap
 
 # Start the daemon pointing to our config and data
@@ -28,4 +32,4 @@ USER openldap
 # CMD ["slapd", "-d", "stats", "-h", "ldap://0.0.0.0:1389/ ldaps://0.0.0.0:1636/ ldapi:///"]
 
 # To this:
-CMD ["slapd", "-d", "stats", "-h", "ldap://0.0.0.0:1389/ ldaps://0.0.0.0:1636/"]
+CMD ["/bin/bash", "-c", "/usr/local/bin/init-ldap.sh && exec slapd -d stats -h 'ldap://0.0.0.0:1389/ ldaps://0.0.0.0:1636/ ldapi:///'"]
