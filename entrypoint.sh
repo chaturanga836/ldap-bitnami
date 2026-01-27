@@ -38,13 +38,17 @@ if [ ! -f "/var/lib/ldap/.init_done" ]; then
 dn: cn=config
 objectClass: olcGlobal
 cn: config
-olcModulePath: /usr/lib/ldap
-olcModuleLoad: back_mdb
-olcModuleLoad: back_monitor
 olcTLSCACertificateFile: ${TLS_CA}
 olcTLSCertificateFile: ${TLS_CRT}
 olcTLSCertificateKeyFile: ${TLS_KEY}
 olcTLSVerifyClient: never
+
+dn: cn=module,cn=config
+objectClass: olcModuleList
+cn: module
+olcModulePath: /usr/lib/ldap
+olcModuleLoad: back_mdb
+olcModuleLoad: back_monitor
 
 dn: cn=schema,cn=config
 objectClass: olcSchemaConfig
