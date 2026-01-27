@@ -1,23 +1,27 @@
 FROM debian:stable-slim
 
-# Install OpenLDAP and necessary management tools
-RUN apt-get update && apt-get install -y \
+# Install OpenLDAP and required tools for SSL and healthchecks
+RUN apt-get update && apt-get install -y --no-install-recommends \
     slapd \
     ldap-utils \
-    procps \
-    gnutls-bin \
-    ssl-cert \
-    && rm -rf /var/lib/apt/lists/*
+    openssl \
+    ca-certificates \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create necessary directories
-RUN mkdir -p /var/lib/ldap /etc/ldap/slapd.d /etc/ldap/certs /run/slapd
+# Create dedicated user/group (Borrowing Osixia's 911/911 convention)
+RUN groupadd -g 911 openldap && \
+    useradd -u 911 -g openldap -d /var/lib/ldap -s /bin/false openldap
 
-# Expose privileged ports (389 for LDAP, 636 for LDAPS)
+# Setup required directories with correct ownership
+RUN mkdir -p /var/lib/ldap /etc/ldap/slapd.d /run/slapd /container/certs && \
+    chown -R openldap:openldap /var/lib/ldap /etc/ldap/slapd.d /run/slapd
+
+# Production hardening: expose standard ports
 EXPOSE 389 636
 
-COPY init-ldap.sh /usr/local/bin/init-ldap.sh
-RUN chmod +x /usr/local/bin/init-ldap.sh
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# We run as root to allow binding to ports < 1024 
-# and full access to ldapi for configuration
-CMD ["/bin/bash", "-c", "/usr/local/bin/init-ldap.sh && exec slapd -d stats -h 'ldap://0.0.0.0:389/ ldaps://0.0.0.0:636/ ldapi:///'"]
+# We start as root to handle potential permission fixes, 
+# but slapd will drop to the 'openldap' user immediately.
+ENTRYPOINT ["/entrypoint.sh"]
