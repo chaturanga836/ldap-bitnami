@@ -38,10 +38,22 @@ if [ ! -f "/var/lib/ldap/.init_done" ]; then
     rm -rf /etc/ldap/slapd.d/*
     rm -rf /var/lib/ldap/*
 
+if [ ! -f "/var/lib/ldap/.init_done" ]; then
+    echo "Initializing Production LDAP for $LDAP_DOMAIN..."
+    HASHED_PW=$(slappasswd -s "$LDAP_ADMIN_PW")
+
+    rm -rf /etc/ldap/slapd.d/*
+    rm -rf /var/lib/ldap/*
+
     slapadd -n 0 -F /etc/ldap/slapd.d <<EOF
 dn: cn=config
 objectClass: olcGlobal
 cn: config
+# --- DYNAMIC MODULE LOADING ---
+olcModulePath: /usr/lib/ldap
+olcModuleLoad: back_mdb
+olcModuleLoad: back_monitor
+# ------------------------------
 olcTLSCACertificateFile: ${TLS_CA}
 olcTLSCertificateFile: ${TLS_CRT}
 olcTLSCertificateKeyFile: ${TLS_KEY}
