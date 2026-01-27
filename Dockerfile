@@ -5,6 +5,7 @@ FROM debian:stable-slim
 RUN apt-get update && apt-get install -y \
     slapd \
     ldap-utils \
+    procps \
     gnutls-bin \
     ssl-cert \
     && rm -rf /var/lib/apt/lists/*
