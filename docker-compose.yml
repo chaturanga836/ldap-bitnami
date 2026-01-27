@@ -6,8 +6,8 @@ services:
     container_name: ldap-custom-prod
     env_file: .env
     ports:
-      - "389:1389"   # Host 389 maps to internal 1389
-      - "636:1636"   # Host 636 maps to internal 1636
+      - "389:389"
+      - "636:636" # Host 636 maps to internal 1636
     volumes:
       # --- Persistent Data ---
       - ldap_db:/var/lib/ldap
