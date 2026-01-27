@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Create dedicated user/group (Borrowing Osixia's 911/911 convention)
-RUN groupadd -g 911 openldap && \
-    useradd -u 911 -g openldap -d /var/lib/ldap -s /bin/false openldap
+RUN groupmod -g 911 openldap && \
+    usermod -u 911 -g 911 openldap
 
 # Setup required directories with correct ownership
 RUN mkdir -p /var/lib/ldap /etc/ldap/slapd.d /run/slapd /container/certs && \
