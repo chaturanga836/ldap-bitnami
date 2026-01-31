@@ -45,13 +45,25 @@ olcModuleLoad: back_mdb
 EOF
     slapadd -n 0 -F /etc/ldap/slapd.d -l /tmp/00-config.ldif
 
-    # STEP 2: Explicitly load schemas (The Debian/cn=config way)
+# STEP 2: Explicitly load schemas
     echo "Loading core schemas..."
     slapadd -n 0 -F /etc/ldap/slapd.d -l /etc/ldap/schema/core.ldif
     slapadd -n 0 -F /etc/ldap/slapd.d -l /etc/ldap/schema/cosine.ldif
+    slapadd -n 0 -F /etc/ldap/slapd.d -l /etc/ldap/schema/nis.ldif           # <--- ADD THIS
     slapadd -n 0 -F /etc/ldap/slapd.d -l /etc/ldap/schema/inetorgperson.ldif
 
-    # STEP 3: Databases
+    # STEP 2.1: Add MemberOf support (Required for your backend /api/users/{username}/groups)
+    cat <<EOF > /tmp/00-modules.ldif
+dn: cn=module{1},cn=config
+objectClass: olcModuleList
+cn: module{1}
+olcModulePath: /usr/lib/ldap
+olcModuleLoad: memberof.la
+olcModuleLoad: refint.la
+EOF
+    slapadd -n 0 -F /etc/ldap/slapd.d -l /tmp/00-modules.ldif
+
+# Updated STEP 3: Databases + Overlays
     cat <<EOF > /tmp/01-db.ldif
 dn: olcDatabase={0}config,cn=config
 objectClass: olcDatabaseConfig
@@ -69,6 +81,24 @@ olcRootDN: cn=admin,$BASE_DN
 olcRootPW: $HASHED_PW
 olcDbIndex: objectClass eq
 olcDbIndex: cn,sn,uid pres,eq,sub
+
+# --- Enable MemberOf Overlay ---
+dn: olcOverlay={0}memberof,olcDatabase={1}mdb,cn=config
+objectClass: olcConfig
+objectClass: olcMemberOf
+objectClass: olcOverlayConfig
+objectClass: top
+olcOverlay: {0}memberof
+
+# --- Enable Referential Integrity ---
+# (Ensures if you delete a user, they are removed from groups automatically)
+dn: olcOverlay={1}refint,olcDatabase={1}mdb,cn=config
+objectClass: olcConfig
+objectClass: olcOverlayConfig
+objectClass: olcRefintConfig
+objectClass: top
+olcOverlay: {1}refint
+olcRefintAttribute: member memberUid
 EOF
     slapadd -n 0 -F /etc/ldap/slapd.d -l /tmp/01-db.ldif
 
