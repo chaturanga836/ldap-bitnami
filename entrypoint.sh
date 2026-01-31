@@ -143,11 +143,11 @@ gidNumber: 10000
 dn: cn=admins,ou=groups,$BASE_DN
 objectClass: top
 objectClass: groupOfNames
-objectClass: posixGroup
+# We remove posixGroup to avoid the structural conflict 
+# but keep the attributes that Ranger/Trino look for.
 cn: admins
-gidNumber: 10000
 member: uid=admin,ou=users,$BASE_DN
-memberUid: admin
+
 EOF
     slapadd -n 1 -F /etc/ldap/slapd.d -l /tmp/03-seed.ldif
 
