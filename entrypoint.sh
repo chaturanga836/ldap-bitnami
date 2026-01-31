@@ -45,14 +45,14 @@ olcModuleLoad: back_mdb
 EOF
     slapadd -n 0 -F /etc/ldap/slapd.d -l /tmp/00-config.ldif
 
-# STEP 2: Explicitly load schemas
+    # STEP 2: Explicitly load schemas
     echo "Loading core schemas..."
     slapadd -n 0 -F /etc/ldap/slapd.d -l /etc/ldap/schema/core.ldif
     slapadd -n 0 -F /etc/ldap/slapd.d -l /etc/ldap/schema/cosine.ldif
-    slapadd -n 0 -F /etc/ldap/slapd.d -l /etc/ldap/schema/nis.ldif           # <--- ADD THIS
+    slapadd -n 0 -F /etc/ldap/slapd.d -l /etc/ldap/schema/nis.ldif
     slapadd -n 0 -F /etc/ldap/slapd.d -l /etc/ldap/schema/inetorgperson.ldif
 
-    # STEP 2.1: Add MemberOf support (Required for your backend /api/users/{username}/groups)
+    # STEP 2.1: Add Overlays Modules
     cat <<EOF > /tmp/00-modules.ldif
 dn: cn=module{1},cn=config
 objectClass: olcModuleList
@@ -63,7 +63,7 @@ olcModuleLoad: refint.la
 EOF
     slapadd -n 0 -F /etc/ldap/slapd.d -l /tmp/00-modules.ldif
 
-# Updated STEP 3: Databases + Overlays
+    # STEP 3: Databases + Overlays
     cat <<EOF > /tmp/01-db.ldif
 dn: olcDatabase={0}config,cn=config
 objectClass: olcDatabaseConfig
@@ -82,7 +82,6 @@ olcRootPW: $HASHED_PW
 olcDbIndex: objectClass eq
 olcDbIndex: cn,sn,uid pres,eq,sub
 
-# --- Enable MemberOf Overlay ---
 dn: olcOverlay={0}memberof,olcDatabase={1}mdb,cn=config
 objectClass: olcConfig
 objectClass: olcMemberOf
@@ -90,8 +89,6 @@ objectClass: olcOverlayConfig
 objectClass: top
 olcOverlay: {0}memberof
 
-# --- Enable Referential Integrity ---
-# (Ensures if you delete a user, they are removed from groups automatically)
 dn: olcOverlay={1}refint,olcDatabase={1}mdb,cn=config
 objectClass: olcConfig
 objectClass: olcOverlayConfig
@@ -102,7 +99,7 @@ olcRefintAttribute: member memberUid
 EOF
     slapadd -n 0 -F /etc/ldap/slapd.d -l /tmp/01-db.ldif
 
-    # STEP 4: Root Entry
+    # STEP 4: Root Entry (Fixed EOF placement)
     cat <<EOF > /tmp/02-data.ldif
 dn: $BASE_DN
 objectClass: top
@@ -112,6 +109,47 @@ o: $LDAP_ORG
 dc: $(echo $LDAP_DOMAIN | cut -d. -f1)
 EOF
     slapadd -n 1 -F /etc/ldap/slapd.d -l /tmp/02-data.ldif
+
+    # STEP 5: Seed OUs, Admin Group, and Initial Admin User (Now outside Step 4)
+    echo "Seeding initial directory structure..."
+    cat <<EOF > /tmp/03-seed.ldif
+# Create Users OU
+dn: ou=users,$BASE_DN
+objectClass: organizationalUnit
+ou: users
+
+# Create Groups OU
+dn: ou=groups,$BASE_DN
+objectClass: organizationalUnit
+ou: groups
+
+# Create a default admin user
+dn: uid=admin,ou=users,$BASE_DN
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: admin
+sn: Administrator
+cn: LDAP Admin
+userPassword: $LDAP_ADMIN_PW
+loginShell: /bin/bash
+homeDirectory: /home/admin
+uidNumber: 10000
+gidNumber: 10000
+
+# Create the Admins Group
+dn: cn=admins,ou=groups,$BASE_DN
+objectClass: top
+objectClass: groupOfNames
+objectClass: posixGroup
+cn: admins
+gidNumber: 10000
+member: uid=admin,ou=users,$BASE_DN
+memberUid: admin
+EOF
+    slapadd -n 1 -F /etc/ldap/slapd.d -l /tmp/03-seed.ldif
 
     chown -R openldap:openldap /etc/ldap/slapd.d /var/lib/ldap
     touch "/var/lib/ldap/.init_done"
