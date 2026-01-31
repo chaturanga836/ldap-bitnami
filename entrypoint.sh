@@ -38,7 +38,7 @@ olcTLSCertificateKeyFile: ${TLS_KEY}
 olcTLSVerifyClient: never
 olcLogLevel: stats
 # USE OPENSSL SYNTAX HERE:
-olcTLSCipherSuite: HIGH:MEDIUM:!SSLv2:!SSLv3:!TLSv1.3:RSA
+olcTLSCipherSuite: ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:RSA+AESGCM:HIGH:!aNULL:!eNULL:!TLSv1.3
 olcTLSProtocolMin: 3.3
 
 dn: cn=module,cn=config
