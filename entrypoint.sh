@@ -12,12 +12,10 @@ MY_IP=$(hostname -I | awk '{print $1}')
 EXTERNAL_IP=${LDAP_EXTERNAL_IP:-$MY_IP}
 
 # --- 0. Permission Pre-fix ---
-# Ensure the directories exist and are owned by openldap BEFORE we try slapadd
 mkdir -p /etc/ldap/certs /etc/ldap/slapd.d /var/lib/ldap /run/slapd
 chown -R openldap:openldap /etc/ldap/certs /etc/ldap/slapd.d /var/lib/ldap /run/slapd
 
 # --- 1. SSL Priority Logic ---
-# Check if user provided files via .env/volumes, otherwise fallback to default path
 TARGET_KEY=${LDAP_TLS_KEY:-/etc/ldap/certs/tls.key}
 TARGET_CRT=${LDAP_TLS_CERT:-/etc/ldap/certs/tls.crt}
 TARGET_CA=${LDAP_TLS_CA_CRT:-/etc/ldap/certs/ca.crt}
@@ -48,24 +46,30 @@ EOF
       -CAcreateserial -out /etc/ldap/certs/tls.crt -days 365 -sha256 \
       -extfile /tmp/openssl.cnf -extensions v3_req
     
-    # Update targets to the newly generated files
     TARGET_KEY="/etc/ldap/certs/tls.key"
     TARGET_CRT="/etc/ldap/certs/tls.crt"
     TARGET_CA="/etc/ldap/certs/ca.crt"
 fi
 
-# AUTOMATION: Fix permissions for WHATEVER files were used
 chown openldap:openldap "$TARGET_KEY" "$TARGET_CRT" "$TARGET_CA"
 chmod 600 "$TARGET_KEY"
 chmod 644 "$TARGET_CRT" "$TARGET_CA"
 
 # --- 2. First-Time Initialization ---
 if [ ! -f "/var/lib/ldap/.init_done" ]; then
+    # --- EMERGENCY WIPE ---
+    # slapadd requires a completely empty directory. 
+    # If we are here, it means the init wasn't finished, so we clear the mess.
+    echo "Cleaning up directories for fresh install..."
+    rm -rf /etc/ldap/slapd.d/*
+    rm -rf /var/lib/ldap/*
+    
     echo "Initializing LDAP for $LDAP_DOMAIN..."
     HASHED_PW=$(slappasswd -s "$LDAP_ADMIN_PW")
 
-    # FIX: Remove !TLSv1.3 to support modern Trino/Ranger handshakes
-    su -s /bin/bash openldap -c "slapadd -n 0 -F /etc/ldap/slapd.d" <<EOF
+    # Initialize Config (Database 0)
+    # NOTE: The lines below MUST NOT have any leading spaces/tabs
+su -s /bin/bash openldap -c "slapadd -n 0 -F /etc/ldap/slapd.d" <<EOF
 dn: cn=config
 objectClass: olcGlobal
 cn: config
@@ -105,7 +109,8 @@ olcDbIndex: objectClass eq
 olcDbIndex: cn,sn,uid pres,eq,sub
 EOF
 
-    su -s /bin/bash openldap -c "slapadd -n 1 -F /etc/ldap/slapd.d" <<EOF
+    # Initialize Base Domain
+su -s /bin/bash openldap -c "slapadd -n 1 -F /etc/ldap/slapd.d" <<EOF
 dn: ${BASE_DN}
 objectClass: top
 objectClass: dcObject
@@ -115,6 +120,7 @@ dc: $(echo $LDAP_DOMAIN | cut -d. -f1)
 EOF
 
     touch "/var/lib/ldap/.init_done"
+    chown openldap:openldap /var/lib/ldap/.init_done
 fi
 
 echo "Starting slapd..."
