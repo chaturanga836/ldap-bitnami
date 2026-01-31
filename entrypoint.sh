@@ -28,18 +28,18 @@ if [ ! -f "/var/lib/ldap/.init_done" ]; then
     # A. Initialize Config (Database 0)
     # CRITICAL: We run this AS the openldap user using 'su' to avoid permission issues
     su -s /bin/bash openldap -c "slapadd -n 0 -F /etc/ldap/slapd.d" <<EOF
-    # ... inside the su -s /bin/bash openldap -c "slapadd..." block ...
-    dn: cn=config
-    objectClass: olcGlobal
-    cn: config
-    olcTLSCACertificateFile: ${TLS_CA}
-    olcTLSCertificateFile: ${TLS_CRT}
-    olcTLSCertificateKeyFile: ${TLS_KEY}
-    olcTLSVerifyClient: never
-    olcLogLevel: stats
-    # USE OPENSSL SYNTAX HERE:
-    olcTLSCipherSuite: HIGH:MEDIUM:!SSLv2:!SSLv3:!TLSv1.3:RSA
-    olcTLSProtocolMin: 3.3
+
+dn: cn=config
+objectClass: olcGlobal
+cn: config
+olcTLSCACertificateFile: ${TLS_CA}
+olcTLSCertificateFile: ${TLS_CRT}
+olcTLSCertificateKeyFile: ${TLS_KEY}
+olcTLSVerifyClient: never
+olcLogLevel: stats
+# USE OPENSSL SYNTAX HERE:
+olcTLSCipherSuite: HIGH:MEDIUM:!SSLv2:!SSLv3:!TLSv1.3:RSA
+olcTLSProtocolMin: 3.3
 
 dn: cn=module,cn=config
 objectClass: olcModuleList
