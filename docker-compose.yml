@@ -4,7 +4,7 @@ services:
   ldap:
     build: .
     container_name: ldap-custom-prod
-    user: root  # Required to fix permissions on mounted volumes
+    user: root  # Needed for the initial chown/chmod in your script
     env_file: .env
     ports:
       - "389:389"
@@ -12,23 +12,16 @@ services:
     volumes:
       - ldap_db:/var/lib/ldap
       - ldap_config:/etc/ldap/slapd.d
-      # Maps local files to the paths defined in your .env
+      # Mount your Windows-generated certs
       - ./certs/tls.crt:${LDAP_TLS_CERT}
       - ./certs/tls.key:${LDAP_TLS_KEY}
       - ./certs/ca.crt:${LDAP_TLS_CA_CRT}
     
-    # This command dynamically fixes permissions for whatever filenames are in the .env
-    command: >
-      bash -c "
-      echo 'Fixing permissions for ${LDAP_TLS_KEY}...' &&
-      chown 1001:1001 ${LDAP_TLS_CERT} ${LDAP_TLS_KEY} ${LDAP_TLS_CA_CRT} &&
-      chmod 600 ${LDAP_TLS_KEY} &&
-      chmod 644 ${LDAP_TLS_CERT} ${LDAP_TLS_CA_CRT} &&
-      echo 'Starting LDAP...' &&
-      /opt/bitnami/scripts/openldap/run.sh
-      "
+    # We REMOVE the command block entirely.
+    # The Dockerfile already says ENTRYPOINT ["/entrypoint.sh"]
+    
     healthcheck:
-      test: ["CMD", "ldapsearch", "-H", "ldap://localhost", "-b", "cn=config", "-D", "cn=admin,cn=config", "-w", "$LDAP_CONFIG_ADMIN_PASSWORD", "-l", "1"]
+      test: ["CMD", "ldapsearch", "-H", "ldap://localhost", "-b", "cn=config", "-1"]
       interval: 30s
       timeout: 10s
       retries: 5
