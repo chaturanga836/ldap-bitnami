@@ -13,8 +13,8 @@ services:
       - ldap_db:/var/lib/ldap
       - ldap_config:/etc/ldap/slapd.d
       # Mount your Windows-generated certs
-      - ./certs/tls.crt:${LDAP_TLS_CERT}
-      - ./certs/tls.key:${LDAP_TLS_KEY}
+      - ./certs/ldap.crt:${LDAP_TLS_CERT}
+      - ./certs/ldap.key:${LDAP_TLS_KEY}
       - ./certs/ca.crt:${LDAP_TLS_CA_CRT}
     
     # We REMOVE the command block entirely.
